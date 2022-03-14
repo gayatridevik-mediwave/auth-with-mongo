@@ -10,7 +10,9 @@ const { makeJWT } = require("./utils");
 
 // models
 const UserModel = require("./models/user.model");
+const PostModel = require("./models/post.model");
 const { decryptUser } = require("./middlewares/decryptUser");
+const { serverError } = require("./middlewares/serverErrors");
 
 app.use(express.json());
 
@@ -67,7 +69,6 @@ app.post("/sessions", async (req, res) => {
 // authenticated endpoints
 app.get("/users", decryptUser, async (req, res) => {
   try {
-    console.log("locals ", res.locals);
     const userInfo = await UserModel.findById(
       res.locals.user,
       "email name createdAt"
@@ -84,6 +85,41 @@ app.get("/users", decryptUser, async (req, res) => {
     });
   }
 });
+
+app.post("/posts", decryptUser, async (req, res) => {
+  try {
+    const user = res.locals.user;
+    const payload = {
+      ...req.body,
+      user,
+    };
+
+    const newPost = await PostModel.create(payload);
+    return res.send({
+      data: newPost,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+app.get("/posts", decryptUser, async (req, res) => {
+  try {
+    const user = res.locals.user;
+
+    const posts = await PostModel.find({
+      user,
+    });
+    return res.send({
+      data: posts,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// error handlers
+app.use(serverError);
 
 app.listen(PORT, (err) => {
   if (err) {
